@@ -48,16 +48,25 @@ install.packages(c("igraph", "ggplot2", "tidyr", "survival", "survminer"))
 Un archivo `.rds` con una lista de R que contiene un vector de membresía por ventana temporal (como el que devuelve `igraph::membership()`), todos sobre el mismo conjunto de vértices. Por defecto se llama `lista_vectores_de_membresia.rds`; ajusta el nombre en el script 01.
 
 ## Cómo ejecutar
+La fundamentación matemática completa está en
+[`docs/metodologia/metodologia.tex`](docs/metodologia/metodologia.tex).
 
-Los scripts leen y escriben en el directorio de trabajo. Coloca ahí el archivo de entrada y ejecuta los scripts **en orden**; cada uno lee los archivos que produjo el anterior.
+### Pipeline de ejecución
 
-| Script | Qué hace | Lee | Genera |
-|---|---|---|---|
-| `01_optimizar_particiones.R` | Extrae los nombres de los vértices y las fechas de cada ventana, convierte cada partición a vectores de comunidades y calcula el mejor emparejamiento por Jaccard entre ventanas consecutivas | Lista de vectores de membresía | `NodosNames.csv`, `Fechas.csv`, `comunidadesporventana.rds`, `jaccardstotales.rds`, `recalls.rds` |
-| `02_seguimiento_completo.R` | Calcula las trayectorias de las comunidades temporales, las re-etiqueta para el generador de mapas aluviales de [Mapequation](https://www.mapequation.org/alluvial/) y obtiene los vértices de cada comunidad temporal en cada ventana | `jaccardstotales.rds`, `comunidadesporventana.rds`, `Fechas.csv`, `NodosNames.csv` | `informacionTrayectorias.rds` y la información para el diagrama aluvial |
-| `03_metricas_globales.R` | Calcula las métricas globales y genera una gráfica por métrica y una gráfica comparativa | `informacionTrayectorias.rds`, `comunidadesporventana.rds`, `jaccardstotales.rds`, `recalls.rds`, lista de vectores de membresía, `Fechas.csv` | Gráficas de las métricas |
-| `04_muertes_y_nacimientos.R` | Detecta los eventos de nacimiento y muerte, genera estadísticas y gráficas por tipo de evento y calcula las tasas de variación | `informacionTrayectorias.rds`, `comunidadesporventana.rds`, `Fechas.csv` | `eventos.rds`, `TasaInterAnualMyNs.csv`, `TasaInterQuincenalMyNs.csv` y gráficas |
-| `05_supervivencia.R` | Adapta los datos de las comunidades temporales al formato de `survival` y `survminer` y ordena las comunidades por importancia. La parte del análisis debe ajustarse a la pregunta de interés | `informacionTrayectorias.rds`, `eventos.rds`, `NodosNames.csv` | Curvas y tablas de supervivencia |
+Ejecuta los scripts **en este orden**. Cada uno documenta sus entradas y
+salidas en el encabezado del propio script.
+
+| # | Script | Sección de la metodología | Qué hace |
+|---|--------|---------------------------|----------|
+| 1 | `01_optimizar_particiones.R` | §2 Rastreo (parte 1) | Extrae fechas y nombres de vértices; convierte `membership` → vectores de IDs; genera `comunidadesporventana.rds`. |
+| 2 | `02_seguimiento_completo.R`     | §2 Rastreo (parte 2) | Emparejamiento Jaccard + inclusión con doble umbral; construye las comunidades temporales. |
+| 3 | `03_metricas_globales.R`        | §3 Métricas globales | Calcula precisión, recall, métrica armónica, métrica ajustada, NMI y vértices inactivos. |
+| 4 | `04_muertes_y_nacimientos.R`    | §4 Eventos + §6.2 Tasas | Clasifica muertes y nacimientos (absorción, división, fragmentación, fusión) y calcula tasas de variación. |
+| 5 | `05_supervivencia.R`            | §5 Supervivencia + §6.1 Comunidades importantes | Kaplan–Meier, log-rank, Bonferroni, Cox multivariado; ranking de comunidades por tamaño×longevidad. |
+
+> ⚠️ Los scripts 2–5 dependen de las salidas de los anteriores. Si corres uno
+> fuera de orden, revisa el encabezado del script: indica qué archivos `.rds`
+> debe encontrar en la carpeta.
 
 El script 04 calcula los eventos una sola vez y los guarda en `eventos.rds`; después puede saltarse esa primera parte y leer el archivo directamente.
 
