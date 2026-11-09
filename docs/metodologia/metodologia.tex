@@ -1,0 +1,357 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{url}
+\usepackage[margin=2cm]{geometry}
+
+\title{Metodología\\\large Análisis de comunidades en redes temporales}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introducción}
+\label{sec:intro}
+Se presenta la metodología utilizada en este repositorio y el respaldo matemático. La Sección~\ref{sec:mapeo} indica qué script del repositorio implementa cada parte.
+
+\section{Rastreo de comunidades}
+\label{sec:rastreo}
+
+Definimos una \textbf{comunidad temporal} al seguimiento de una comunidad a lo largo del tiempo. Si tenemos una comunidad $A$ en una ventana $t$, realizamos una comparación de conjuntos con las comunidades generadas en la partición de la red en la ventana $t+1$, utilizando el criterio de similitud de Jaccard~\cite{ref:jaccard}, definido como
+\[
+\text{Jaccard}(A , B) = \frac{|A \cap B|}{|A \cup B|}.
+\]
+Realizamos el emparejamiento de la comunidad $A$ con alguna comunidad $B$ si $J(A,B) > \text{umbral}$; dicha estrategia es el emparejamiento de mejor match por Jaccard~\cite{ref:bestmatch}.
+
+Además, se realiza una comparación de similitud utilizando el índice de inclusión de conjuntos entre la primera versión de la comunidad (su primera aparición) y la comunidad $B$ que cumple $J(A,B) > \text{umbral}$, con un segundo umbral para dicha comparación. La inclusión de conjuntos (coeficiente de superposición de Szymkiewicz--Simpson) es una relación matemática que ocurre cuando todos los elementos de un conjunto pertenecen también a otro. Se define como
+\[
+\text{Inclusión}(A \to B) = \frac{|A \cap B|}{|A|}.
+\]
+Finalmente, si ambas comparaciones de similitud superan los umbrales establecidos, se considera que la comunidad $A$ de la ventana $t$ y la comunidad $B$ de la ventana $t+1$ pertenecen a la misma comunidad temporal.
+
+El criterio del segundo umbral se estableció con el objetivo de evitar el problema del \textit{barco de Teseo}, pues así garantizamos una similitud mínima entre la primera aparición de la comunidad con cualquiera detectada como ``la misma'' dentro de la comunidad temporal.
+
+Se sugiere un índice de similitud de Jaccard apegado a la interpretabilidad, igualmente para el índice de inclusión; además se pueden descartar comunidades temporales que no alcanzan los $n$ vértices en ninguna ventana.
+
+\section{Métricas del comportamiento global de las comunidades en la red temporal}
+\label{sec:metricas}
+
+\subsection{Métrica propuesta}
+La métrica diseñada cuantifica la estabilidad global de la estructura de comunidades de la red entre dos ventanas de tiempo consecutivas. Para cada comunidad no trivial presente en la ventana $t$, excluyendo aquellos vértices que constituyen su propia comunidad o pertenecen a comunidades menores de $n$ vértices de forma aislada y que permanecen aislados en $t+1$ (pues su persistencia no aporta información sobre la dinámica estructural), se identifica la comunidad en $t+1$ con la que comparte mayor superposición, medida mediante el índice de Jaccard~\cite{ref:jaccard}; esto es el \textit{Best Match Jaccard}~\cite{ref:bestmatch}. El promedio de estos valores máximos sobre todas las comunidades no triviales de $t$ constituye la \textbf{precisión}: qué tan bien se encuentran las comunidades de $t$ en $t+1$. El mismo procedimiento aplicado en sentido inverso, de $t+1$ hacia $t$, produce el \textbf{recall}: qué tan bien se explican las comunidades de $t+1$ por las de $t$. La métrica combina ambas direcciones mediante la media armónica, lo que penaliza los casos en que una de las dos direcciones falla, produciendo un valor en $[0,1]$. El valor obtenido en la comparación $t$ a $t+1$ se asigna a la ventana $t+1$:
+\begin{equation}
+\text{Métrica} = \frac{2 \cdot F_{t \to t+1} \cdot F_{t+1 \to t}}{F_{t \to t+1} + F_{t+1 \to t}},
+\label{eq:fhc}
+\end{equation}
+donde $F_{t \to t+1}$ es la precisión y $F_{t+1 \to t}$ el recall. Valores cercanos a $1$ indican particiones prácticamente idénticas entre ventanas; valores cercanos a $0$, una reorganización profunda.
+
+\subsection{Métrica ajustada con penalización por singletons}
+Para incorporar el efecto de los vértices aislados, se define un factor de participación. Sea $N$ el número total de vértices (constante) y $S_t$ la cantidad de vértices que pertenecen a comunidades triviales en la ventana $t$, sin distinguir si lo eran antes. La proporción de dichos vértices es
+\begin{equation}
+P_t = \frac{N - S_t}{N}.
+\end{equation}
+Para la transición $t \to t+1$ se calcula la media geométrica de las participaciones
+\begin{equation}
+P = \sqrt{P_t \cdot P_{t+1}},
+\end{equation}
+y la \textbf{métrica ajustada} se obtiene multiplicando la métrica original por este factor:
+\begin{equation}
+\text{Métrica}_a = \text{Métrica} \times P.
+\end{equation}
+Así, la métrica penaliza los periodos con muchos vértices aislados.
+
+\subsection{Información Mutua Normalizada (NMI)}
+Como métrica complementaria se calcula la Información Mutua Normalizada entre particiones consecutivas. Sea $\{W_t\}_{t=1}^{T}$ una secuencia de ventanas temporales; para cada ventana $W_t$ sea
+\[
+X_t = \{C_1^t, \dots, C_{k_t}^t\}
+\]
+la partición detectada, con cada $C_i^t \subseteq V(W_t)$. Al comparar dos ventanas consecutivas, $X = X_t$ e $Y = X_{t+1}$. Entonces $P(x)=|x|/n$ es la fracción de vértices en la comunidad $x$ de $X$, y $P(x,y)=|x\cap y|/n$ la fracción que está en $x$ de $X$ y en $y$ de $Y$. La entropía es
+\begin{equation}
+H(X) = -\sum_{x \in X} P(x) \log_2 P(x),
+\end{equation}
+y la información mutua
+\begin{equation}
+MI(X,Y) = \sum_{x \in X} \sum_{y \in Y} P(x,y) \log_2 \frac{P(x,y)}{P(x)P(y)}.
+\end{equation}
+La normalización propuesta por Danon et al.~\cite{ref:danon} e implementada en \texttt{igraph}~\cite{ref:igraph} es
+\begin{equation}
+\text{NMI}(X,Y) = \frac{2 \cdot MI(X,Y)}{H(X) + H(Y)}.
+\end{equation}
+$\text{NMI}=1$ indica particiones idénticas y $\text{NMI}=0$ independencia total.
+
+\subsection{Vértices inactivos}
+Cuando un vértice pertenece a una comunidad trivial en $t$ (menor de $n$ vértices) y se mantiene en una comunidad trivial en $t+1$, se considera un vértice inactivo. La proporción de vértices inactivos en un par consecutivo $t, t+1$ es
+\begin{equation}
+\text{Proporción} = \frac{A}{n},
+\end{equation}
+donde $A$ es el número de vértices inactivos y $n$ el total de vértices de la red.
+
+\section{Detección de eventos}
+\label{sec:eventos}
+
+Se determina \textbf{muerte} de una comunidad temporal $A$ cuando esta existe en una ventana $t$ y, al compararla con todas las comunidades de $t+1$ usando los índices de similitud, ningún valor supera uno o ambos umbrales. La muerte se asocia a la ventana $t$. Se determina \textbf{nacimiento} de una comunidad temporal $A$ cuando existe en una ventana $t$, es su primera aparición y, al compararla con todas las comunidades de $t-1$, ningún valor superó los umbrales. Dicho nacimiento se asocia a la ventana $t$.
+
+El seguimiento se realizó mediante Jaccard, que es simétrico y exige superposición significativa en ambas direcciones; esto lo hace adecuado para decidir continuidad. Sin embargo, penaliza fuertemente las diferencias de tamaño. Por ejemplo, si una comunidad de 10 vértices es absorbida por una de 100, aunque los 10 estén contenidos, $J = 10/100 = 0.1$, por debajo de los umbrales, lo que impide detectar absorciones o fusiones asimétricas, y tampoco distingue entre división en dos partes grandes y fragmentación en muchas pequeñas.
+
+El índice de inclusión expresa la fracción de $A$ que terminó en $B$; no penaliza si $B \gg A$. Su versión inversa indica qué fracción de $B$ proviene de $A$:
+\[
+\text{Inclusión}(A \leftarrow B) = \frac{|A \cap B|}{|B|}.
+\]
+Este índice es la base del método GED (Group Evolution Discovery) de Bródka et al.~\cite{ref:brokda}, tomando una calidad de miembro igual para cada vértice, y añadiendo umbrales de concentración ($x_1$, $x_2$) para distinguir divisiones de fragmentaciones. Así es posible saber hacia dónde fue la masa cuando una comunidad no sobrevivió y de dónde vino cuando nació una nueva. La clasificación sigue los tipos de~\cite{ref:brokda}: absorciones, divisiones, fragmentaciones y fusiones, con umbrales simples y sin requerir coincidencias simétricas fuertes.
+
+\subsubsection*{Criterio de similitud}
+Para cada comunidad no trivial $A$ en $t$ y $B$ en $t+1$:
+\[
+\text{Inclusión}(A \to B) = \frac{|A \cap B|}{|A|},
+\qquad
+\text{Inclusión}(A \leftarrow B) = \frac{|A \cap B|}{|B|}.
+\]
+Para $A$ fija, $\sum_B \text{Inclusión}(A \to B) = 1$ sobre todas las $B$ de $t+1$ (incluyendo vértices inactivos). Lo mismo en sentido inverso, lo que permite trabajar con concentración de masa.
+
+Para cada comunidad temporal $A$ que muere:
+\[
+x_1 = \max_B\{\text{Inclusión}(A \to B)\},
+\qquad
+x_2 = \max_B\{\text{Inclusión}(A \to B)\} - \{x_1\}.
+\]
+Análogamente, para cada $B$ que nace:
+\[
+y_1 = \max_A\{\text{Inclusión}(A \leftarrow B)\},
+\qquad
+y_2 = \max_A\{\text{Inclusión}(A \leftarrow B)\} - \{y_1\}.
+\]
+
+\textbf{Muerte por segundo umbral:} existe un tipo de muerte denominado \textbf{muerte por Teseo}, que ocurre cuando una comunidad temporal es cortada por el criterio del segundo umbral, el cual exige similitud en cada paso con la primera aparición. Es gradual y no se clasifica con la tabla de decisión. Al morir por este criterio, se obtiene un \textbf{nacimiento por Teseo}.
+
+\subsubsection*{Consistencia de eventos}
+Cada muerte por división $A \to \{B_1, B_2, \dots\}$ debería tener contraparte en los nacimientos: al menos una receptora debería clasificarse como nacimiento por división con $A$ como origen dominante (si $A$ murió) o como fusión si recibió aportes múltiples. Si una muerte por división no tiene nacimiento asociado, probablemente $\alpha$ o $\beta$ estén mal elegidos en una de las dos direcciones.
+
+\subsubsection*{Tabla de decisión: Muertes ($t \to t+1$)}
+\begin{table}[H]
+\centering
+\caption{Clasificación de muertes.}
+\begin{tabular}{@{}p{0.25\textwidth} p{0.30\textwidth} p{0.35\textwidth}@{}}
+\toprule
+\textbf{Tipo de muerte} & \textbf{Condición} & \textbf{Interpretación} \\
+\midrule
+Absorción / fusión estable & $x_1 \geq \alpha_x$ & La mayor parte de $A$ termina en una sola $B$. \\
+\addlinespace
+División & $x_1 < \alpha_x$, $x_1+x_2 \geq \beta_x$ & La masa de $A$ se concentra en dos (o pocos) destinos. \\
+\addlinespace
+Fragmentación & $x_1 < \alpha_x$, $x_1+x_2 < \beta_x$ & La masa de $A$ se dispersa entre muchos destinos pequeños. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Tabla de decisión: Nacimientos ($t \to t+1$)}
+\begin{table}[H]
+\centering
+\caption{Clasificación de nacimientos.}
+\begin{tabular}{@{}p{0.25\textwidth} p{0.30\textwidth} p{0.35\textwidth}@{}}
+\toprule
+\textbf{Tipo de nacimiento} & \textbf{Condición} & \textbf{Interpretación} \\
+\midrule
+División del origen con muerte & $y_1 \geq \alpha_y$ y $A$ murió & $B$ es el fragmento principal de $A$, que dejó de existir localmente. \\
+\addlinespace
+División del origen con supervivencia & $y_1 \geq \alpha_y$ y $A$ sobrevivió & $A$ liberó una fracción que formó $B$, pero continúa su trayectoria. \\
+\addlinespace
+Fusión de varias $A$ & $y_1 < \alpha_y$, $y_1 + y_2 \geq \beta_y$ & $B$ combinó fracciones de dos o más comunidades previas. \\
+\addlinespace
+Formación difusa & $y_1 < \alpha_y$, $y_1+y_2 < \beta_y$ & $B$ se formó de muchas comunidades pequeñas o vértices inactivos. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =========================================================================
+% SECCIÓN EXTENDIDA
+% =========================================================================
+\section{Análisis de supervivencia}
+\label{sec:supervivencia}
+
+Por la naturaleza de los datos, al tener la información de supervivencia de cada comunidad temporal, resulta natural un análisis de supervivencia. Además, existe \textbf{censura por la derecha}: 10 comunidades siguen vivas al final del periodo y no sabemos cuándo morirán. Calcular el promedio de vida solo con las que murieron subestima la supervivencia real. Aunque la censura es baja ($1.4\%$), el análisis también permite comparar la supervivencia entre grupos.
+
+\subsection{Definiciones formales}
+Sea $T$ la variable aleatoria ``tiempo de vida'' de una comunidad, medida en número de ventanas desde su nacimiento. Para la comunidad $i$:
+\begin{itemize}
+\item $T_i$: tiempo de vida observado.
+\item $\delta_i \in \{0,1\}$: indicador de evento. $\delta_i = 1$ si murió durante el periodo; $\delta_i = 0$ si sigue viva al final (censura por la derecha).
+\item $\mathbf{x}_i \in \mathbb{R}^p$: vector de covariables (periodo de nacimiento, tipo de nacimiento, tamaño inicial).
+\end{itemize}
+La función de supervivencia es
+\begin{equation}
+S(t) = P(T > t), \qquad S(0)=1,
+\end{equation}
+y la función de riesgo (hazard)
+\begin{equation}
+h(t) = \lim_{\Delta t \to 0} \frac{P(t \le T < t + \Delta t \mid T \ge t)}{\Delta t}.
+\end{equation}
+
+\subsection{Estimador de Kaplan--Meier}
+Sean $t_1 < t_2 < \dots < t_m$ los tiempos (ventanas) con al menos una muerte, $d_j$ el número de muertes en $t_j$ y $n_j$ el número en riesgo justo antes de $t_j$. El estimador de Kaplan--Meier es
+\begin{equation}
+\hat{S}(t) = \prod_{j:\, t_j \le t} \left(1 - \frac{d_j}{n_j}\right).
+\label{eq:km}
+\end{equation}
+Su varianza se estima con la fórmula de Greenwood:
+\begin{equation}
+\widehat{\mathrm{Var}}\bigl(\hat{S}(t)\bigr) = \hat{S}(t)^2 \sum_{j:\, t_j \le t} \frac{d_j}{n_j (n_j - d_j)}.
+\end{equation}
+El intervalo de confianza al nivel $1-\alpha$ se construye en la escala $\log(-\log \hat{S}(t))$ para garantizar que quede en $[0,1]$.
+
+\subsection{Prueba de log-rank}
+Para comparar dos o más curvas se usa la prueba de log-rank. Para cada tiempo $t_j$ y grupo $g \in \{1, \dots, G\}$:
+\begin{itemize}
+\item $O_{gj}$: muertes observadas en el grupo $g$ en $t_j$,
+\item $n_{gj}$: número en riesgo en $g$ en $t_j$,
+\item $n_j = \sum_g n_{gj}$, $d_j = \sum_g O_{gj}$.
+\end{itemize}
+El número esperado bajo $H_0$ (curvas iguales) es $E_{gj} = d_j \, n_{gj}/n_j$. El estadístico es
+\begin{equation}
+\chi^2 = \sum_{g=1}^{G} \frac{(O_g - E_g)^2}{E_g},
+\qquad O_g = \sum_j O_{gj},\quad E_g = \sum_j E_{gj},
+\end{equation}
+o en forma cuadrática general
+\begin{equation}
+\chi^2 = (\mathbf{O} - \mathbf{E})^\top \mathbf{V}^{-1} (\mathbf{O} - \mathbf{E}) \sim \chi^2_{G-1},
+\end{equation}
+donde $\mathbf{V}$ es la matriz de covarianzas de $\mathbf{O} - \mathbf{E}$ (se usan $G-1$ componentes para evitar singularidad).
+
+\subsection{Corrección de Bonferroni}
+Al realizar $m$ pruebas de log-rank simultáneas (una por covariable categórica), el nivel se ajusta como
+\begin{equation}
+\alpha_{\text{adj}} = \frac{\alpha}{m}.
+\end{equation}
+Se rechaza $H_0$ en la prueba $k$-ésima si $p_k < \alpha_{\text{adj}}$.
+
+\subsection{Modelo de riesgos proporcionales de Cox}
+Para controlar por varias covariables simultáneamente:
+\begin{equation}
+h(t \mid \mathbf{x}_i) = h_0(t) \exp(\boldsymbol{\beta}^\top \mathbf{x}_i),
+\label{eq:cox}
+\end{equation}
+con $h_0(t)$ el riesgo basal (no especificado) y $\boldsymbol{\beta} \in \mathbb{R}^p$. Los coeficientes se estiman maximizando la verosimilitud parcial
+\begin{equation}
+L(\boldsymbol{\beta}) = \prod_{i:\, \delta_i = 1} \frac{\exp(\boldsymbol{\beta}^\top \mathbf{x}_i)}{\sum_{j \in R(t_i)} \exp(\boldsymbol{\beta}^\top \mathbf{x}_j)},
+\end{equation}
+donde $R(t_i) = \{j : T_j \ge t_i\}$. Equivalentemente, se maximiza
+\[
+\ell(\boldsymbol{\beta}) = \sum_{i:\, \delta_i = 1} \left[ \boldsymbol{\beta}^\top \mathbf{x}_i - \log \sum_{j \in R(t_i)} \exp(\boldsymbol{\beta}^\top \mathbf{x}_j) \right],
+\]
+resolviendo $\partial \ell / \partial \boldsymbol{\beta} = \mathbf{0}$ numéricamente (Newton--Raphson). Cada coeficiente se interpreta como razón de riesgos:
+\[
+\exp(\beta_k) = \text{hazard ratio por unidad de } x_k.
+\]
+$\exp(\beta_k) > 1$ indica mayor riesgo de muerte; $\exp(\beta_k) < 1$, mayor supervivencia.
+
+\subsection{Prueba global del modelo}
+Se contrasta $H_0: \boldsymbol{\beta} = \mathbf{0}$ con tres estadísticos asintóticamente equivalentes:
+\begin{itemize}
+\item \textbf{Verosimilitud:} $\Lambda = 2\bigl(\ell(\hat{\boldsymbol{\beta}}) - \ell(\mathbf{0})\bigr) \sim \chi^2_p$.
+\item \textbf{Wald:} $W = \hat{\boldsymbol{\beta}}^\top \widehat{\mathrm{Var}}(\hat{\boldsymbol{\beta}})^{-1} \hat{\boldsymbol{\beta}} \sim \chi^2_p$.
+\item \textbf{Score (Rao):} basado en la derivada de $\ell$ evaluada en $\mathbf{0}$.
+\end{itemize}
+
+\subsection{Verificación del supuesto de riesgos proporcionales}
+El supuesto clave de~\eqref{eq:cox} es que la razón de riesgos entre dos individuos es constante en el tiempo:
+\[
+\frac{h(t \mid \mathbf{x}_i)}{h(t \mid \mathbf{x}_j)} = \exp\bigl(\boldsymbol{\beta}^\top (\mathbf{x}_i - \mathbf{x}_j)\bigr).
+\]
+Se verifica con los \emph{residuos de Schoenfeld}: para cada evento $i$,
+\[
+\hat{\mathbf{s}}_i = \mathbf{x}_i - \frac{\sum_{j \in R(t_i)} \mathbf{x}_j \exp(\hat{\boldsymbol{\beta}}^\top \mathbf{x}_j)}{\sum_{j \in R(t_i)} \exp(\hat{\boldsymbol{\beta}}^\top \mathbf{x}_j)}.
+\]
+Si el supuesto se cumple, $\hat{\mathbf{s}}_i$ no debe mostrar tendencia temporal. Se prueba la correlación entre $\hat{\mathbf{s}}_i$ y el tiempo (o una transformación); un $p$-valor pequeño indica violación.
+
+\subsection{Estrategia de análisis}
+El análisis se estructura en cuatro bloques, cada uno con su prueba de log-rank correspondiente y, cuando aplica, corrección de Bonferroni:
+\begin{enumerate}
+\item \textbf{Curva general} $\hat{S}(t)$ mediante~\eqref{eq:km}: describe el patrón global de mortalidad de las comunidades.
+\item \textbf{Por periodo de nacimiento}: contrasta si la supervivencia difiere según la etapa en que nace la comunidad.
+\item \textbf{Por tipo de nacimiento}: contrasta si el mecanismo de formación (fusión, división, difusa) tiene efecto adicional al periodo.
+\item \textbf{Por tamaño inicial} (cuartiles): contrasta si la masa crítica al nacer se asocia con longevidad.
+\end{enumerate}
+Finalmente, el \textbf{modelo de Cox} multivariado integra las tres covariables (tamaño simplificado, periodo y tipo de nacimiento) y se contrasta con la prueba de verosimilitud. Se verifica el supuesto de riesgos proporcionales con residuos de Schoenfeld.
+
+\section{Información complementaria de la red}
+\label{sec:complementaria}
+
+\subsection{Comunidades temporales más importantes}
+Se ordenan las comunidades por importancia según el número de vértices que tuvieron a lo largo de su vida. Si una comunidad nació en la ventana 1 y murió en la 10, y en cada ventana tuvo los vértices 1, 2 y 3, su nivel de importancia es $3 \times 10 = 30$; así se compensa tamaño y longevidad. Los IDs corresponden al diagrama aluvial generado.
+
+\subsection{Tasas de variación}
+Se calcula la tasa de variación para el número de muertes y nacimientos por ventana. Interanual:
+\[
+\text{Tasa} = \frac{V_{\text{final}} - V_{\text{inicial}}}{V_{\text{inicial}}},
+\]
+donde $V_{\text{inicial}}$ es el valor en $t$ y $V_{\text{final}}$ el valor en $t+24$ (un año = 24 quincenas). Interquincenal:
+\[
+\text{Tasa} = \frac{V_{\text{final}} - V_{\text{inicial}}}{V_{\text{inicial}}},
+\]
+con $V_{\text{final}}$ en $t+1$.
+
+% =========================================================================
+% SECCIÓN NUEVA DE MAPEO
+% =========================================================================
+\section{Correspondencia entre secciones y scripts del repositorio}
+\label{sec:mapeo}
+
+La Tabla~\ref{tab:mapeo} vincula cada bloque metodológico con el script del
+repositorio que lo implementa. El orden de la tabla es el orden de ejecución
+del pipeline. Los scripts están numerados con prefijo (\texttt{01\_}, \texttt{02\_},
+\dots) precisamente para preservar ese orden.
+
+\begin{table}[H]
+\centering
+\caption{Correspondencia entre secciones metodológicas y scripts.}
+\label{tab:mapeo}
+\begin{tabular}{@{}p{0.42\textwidth} p{0.48\textwidth}@{}}
+\toprule
+\textbf{Sección de esta metodología} & \textbf{Script en el repositorio} \\
+\midrule
+Rastreo de comunidades (Sec.~\ref{sec:rastreo}) &
+  \texttt{01\_optimizar\_particiones.R} \\
+  & \texttt{02\_seguimiento\_completo.R} \\
+\addlinespace
+Métricas globales (Sec.~\ref{sec:metricas}) &
+  \texttt{03\_metricas\_globales.R} \\
+\addlinespace
+Detección de eventos (Sec.~\ref{sec:eventos}) &
+  \texttt{04\_muertes\_y\_nacimientos.R} \\
+\addlinespace
+Análisis de supervivencia (Sec.~\ref{sec:supervivencia}) &
+  \texttt{05\_supervivencia.R} \\
+\addlinespace
+Información complementaria (Sec.~\ref{sec:complementaria}, §6.1) &
+  \texttt{05\_supervivencia.R} \\
+\addlinespace
+Tasas de variación (Sec.~\ref{sec:complementaria}, §6.2) &
+  \texttt{04\_muertes\_y\_nacimientos.R} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Nota sobre el rastreo: \texttt{01\_optimizar\_particiones.R} transforma las
+particiones crudas (objetos \texttt{membership}) en vectores de IDs por
+ventana y exporta los nombres de vértices y fechas; \texttt{02\_seguimiento\_completo.R}
+consume esa salida y aplica el emparejamiento Jaccard + inclusión con doble
+umbral descrito en la Sec.~\ref{sec:rastreo}.
+% =========================================================================
+\begin{thebibliography}{9}
+\bibitem{ref:jaccard} Jaccard, P. (1901). Étude comparative de la distribution florale dans une portion des Alpes et du Jura. \emph{Bulletin de la Société Vaudoise des Sciences Naturelles}, 37, 547--579.
+\bibitem{ref:bestmatch} Greene, D., Doyle, D., Cunningham, P. (2010). Tracking the Evolution of Communities in Dynamic Social Networks. En \emph{Proceedings of ASONAM}, pp. 176--183.
+\bibitem{ref:igraph} Csárdi, G., Nepusz, T. (2006). The igraph software package for complex network research. \emph{InterJournal, Complex Systems}, 1695. \url{https://igraph.org}
+\bibitem{ref:danon} Danon, L., Díaz-Guilera, A., Duch, J., Arenas, A. (2005). Comparing community structure identification. \emph{J. Stat. Mech.}, P09008.
+\bibitem{ref:brokda} Bródka, P., Saganowski, S., Kazienko, P. (2013). GED: the method for group evolution discovery in social networks. \emph{Social Network Analysis and Mining}, 3(1), 1--14.
+\bibitem{ref:palla} Palla, G., Barabási, A.-L., Vicsek, T. (2007). Quantifying social group evolution. \emph{Nature}, 446(7136), 664--667.
+\end{thebibliography}
+
+\end{document}
