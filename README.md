@@ -4,7 +4,7 @@ Flujo de análisis en R para estudiar cómo evolucionan las comunidades de una r
 
 ## Contexto
 
-Desarrollado durante mi servicio social en el Instituto de Investigaciones Económicas de la UNAM, aplicado a una red de precios del INPC. Los datos y los resultados no se incluyen en este repositorio porque están en preparación para su publicación; la metodología es general y funciona con cualquier red de vértices fijos con una partición en comunidades por ventana.
+Desarrollado durante mi servicio social en el Instituto de Investigaciones Económicas de la UNAM, aplicado a una red de precios. Los datos y los resultados no se incluyen en este repositorio porque están en preparación para su publicación; la metodología es general y funciona con cualquier red de vértices fijos con una partición en comunidades por ventana.
 
 ## Qué hace
 
