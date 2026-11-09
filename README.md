@@ -48,8 +48,7 @@ install.packages(c("igraph", "ggplot2", "tidyr", "survival", "survminer"))
 Un archivo `.rds` con una lista de R que contiene un vector de membresía por ventana temporal (como el que devuelve `igraph::membership()`), todos sobre el mismo conjunto de vértices. Por defecto se llama `lista_vectores_de_membresia.rds`; ajusta el nombre en el script 01.
 
 ## Cómo ejecutar
-La fundamentación matemática completa está en
-[`docs/metodologia/metodologia.tex`](docs/metodologia/metodologia.tex).
+Puedes leer la fundamentación matemática en el [código fuente `.tex`](docs/metodologia/metodologia.tex) o en el [documento compilado (PDF)](docs/metodologia/metodologia.pdf).
 
 ### Pipeline de ejecución
 
