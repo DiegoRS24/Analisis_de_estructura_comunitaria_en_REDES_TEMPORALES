@@ -18,10 +18,14 @@
 #
 # Entradas:
 #   - lista_de_Vectores_de_membresia.rds : lista de objetos `membership` de igraph.
+#     Nota: names(lista_de_Vectores_de_membresia) debe corresponder a
+#     las fechas de cada ventana (cada vector de membresía); 
+#     names(lista_de_Vectores_de_membresia[[1]]) debe  corresponder a los nombres de 
+#     los nodos de la red.
 #
 # Salidas:
-#   - Fechas<SUFIJO>.csv
-#   - NodosNames<SUFIJO>.csv
+#   - Fechas.csv
+#   - NodosNames.csv
 #   - comunidadesporventana.rds
 #   - jaccardstotales.rds
 #   - recalls.rds
@@ -35,12 +39,12 @@
 # =============================================================================
 
 # ------------------------------- Configuración -------------------------------
-archivo_entrada <- "lista_de_Vectores_de_membresia.rds"  # RDS de entrada
+setwd("C:/Users/diego/Downloads/carpetaPrueba")
+archivo_entrada <- "membresias_desestacionalizada.rds"  # RDS de entrada
 indice_lista    <- 1                                     # Posición dentro del RDS
-sufijo          <- 329L                                  # Sufijo de los CSV generados
 
-archivo_fechas  <- sprintf("Fechas%d.csv",      sufijo)
-archivo_nodos   <- sprintf("NodosNames%d.csv",  sufijo)
+archivo_fechas  <- "Fechas.csv"
+archivo_nodos   <- "NodosNames.csv"
 
 # ------------------------------- Carga de datos ------------------------------
 miLista <- readRDS(archivo_entrada)
