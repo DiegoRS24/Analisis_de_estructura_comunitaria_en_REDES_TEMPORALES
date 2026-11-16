@@ -25,14 +25,19 @@ Desarrollado durante mi servicio social en el Instituto de Investigaciones Econ�
 
 ```
 .
-├── README.md
-├── docs/                              documentación adicional
+├── README.md                          # Este archivo
+├── LICENSE                            # Texto completo de la licencia MIT
+├── .gitignore                         # Archivos que Git no debe rastrear
+├── docs/
+│   └── metodologia/
+│       ├── metodologia.tex            # Código fuente (Overleaf)
+│       └── metodologia.pdf            # Documento compilado PDF
 └── R/
-    ├── 01_optimizar_particiones.R
-    ├── 02_seguimiento_completo.R
-    ├── 03_metricas_globales.R
-    ├── 04_muertes_y_nacimientos.R
-    └── 05_supervivencia.R
+    ├── 01_optimizar_particiones.R     # §2 Rastreo (parte 1)
+    ├── 02_seguimiento_completo.R      # §2 Rastreo (parte 2)
+    ├── 03_metricas_globales.R         # §3 Métricas globales
+    ├── 04_muertes_y_nacimientos.R     # §4 Eventos + §6.2 Tasas
+    └── 05_supervivencia.R             # §5 Supervivencia + §6.1 Ranking
 ```
 
 ## Requisitos
